@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https://img.vietqr.io; style-src 'unsafe-inline'; script-src 'sha256-ootA9L7G0ldkwqSQIlFAr+HOPG3s4nc+tPYEyLpR/TU='; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https://img.vietqr.io; style-src 'unsafe-inline'; script-src 'sha256-Ot7kEKATRzxapiHPcuWItjESKIKQtrD6NbpY2vEkW4k='; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mã QR</title>
   <style>
     :root {
@@ -136,7 +136,7 @@
       width: calc(100% - 24px);
       height: calc(100% - 24px);
       object-fit: contain;
-      
+
     }
     .qr-empty {
       display: flex;
@@ -181,6 +181,22 @@
     }
     .recipient { font-size: 21px; font-weight: 500; letter-spacing: -.35px; }
     .bank { color: var(--muted); font-size: 14px; font-weight: 400; }
+    .bank-letter {
+      display: inline-block;
+      white-space: pre;
+      transform: translate3d(0, 0, 0) scale(1);
+      transform-origin: 50% 80%;
+      animation: bank-wave var(--bank-wave-cycle, 2.6s) cubic-bezier(.45, 0, .55, 1) infinite both;
+      animation-delay: var(--bank-wave-delay, 0s);
+      will-change: transform;
+    }
+    @keyframes bank-wave {
+      0%, 26%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      10% { transform: translate3d(0, -4px, 0) scale(1.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bank-letter { animation: none; transform: none; will-change: auto; }
+    }
     .note { margin-top: 22px; }
     .note dd { font-size: 14px; font-weight: 400; }
     .visually-hidden {
@@ -247,6 +263,7 @@
       dt, h1 { color: #526970; }
       .currency { color: #00796d; }
       .detail-row { border-color: #d2dde0; }
+      .bank-letter { animation: none; transform: none; will-change: auto; }
     }
     </style>
 </head>
@@ -512,6 +529,26 @@
     return url.href;
   }
 
+  function renderBankName(name) {
+    const target = byId('bank-value');
+    const letters = typeof Intl.Segmenter === 'function'
+      ? Array.from(new Intl.Segmenter('vi', { granularity: 'grapheme' }).segment(name), item => item.segment)
+      : Array.from(name.normalize('NFC'));
+    const cycle = Math.max(2.6, ((letters.length - 1) * .085 + .7) / .74);
+    const fragment = document.createDocumentFragment();
+    letters.forEach((letter, index) => {
+      const span = document.createElement('span');
+      span.className = 'bank-letter';
+      span.textContent = letter;
+      span.setAttribute('aria-hidden', 'true');
+      span.style.setProperty('--bank-wave-delay', (index * .085).toFixed(3) + 's');
+      fragment.appendChild(span);
+    });
+    target.setAttribute('aria-label', name);
+    target.style.setProperty('--bank-wave-cycle', cycle.toFixed(3) + 's');
+    target.replaceChildren(fragment);
+  }
+
   function render(payment, source) {
     byId('amount-block').hidden = payment.money === null;
     byId('money-number').textContent = payment.money === null
@@ -520,7 +557,7 @@
     byId('currency').hidden = payment.money === null;
     byId('name-value').textContent = payment.name;
     byId('number-value').textContent = payment.number;
-    byId('bank-value').textContent = payment.bankName || BANK_NAMES[payment.bank] || ('BIN ' + payment.bank);
+    renderBankName(payment.bankName || BANK_NAMES[payment.bank] || ('BIN ' + payment.bank));
     byId('note-value').textContent = payment.note;
     byId('note-row').hidden = !payment.note;
     activeSource = source;
