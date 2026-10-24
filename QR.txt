@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https://img.vietqr.io; style-src 'unsafe-inline'; script-src 'sha256-ootA9L7G0ldkwqSQIlFAr+HOPG3s4nc+tPYEyLpR/TU='; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <title>Mã QR</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #eef4f4;
+      --ink: #172e36;
+      --muted: #526970;
+      --accent: #00796d;
+      --glass: rgba(255, 255, 255, .64);
+      --glass-solid: #f7fbfb;
+      --edge: rgba(255, 255, 255, .9);
+      --line: rgba(42, 81, 91, .12);
+      --highlight: rgba(255, 255, 255, .8);
+      --shadow: rgba(32, 74, 84, .14);
+      --glow-a: rgba(112, 214, 199, .42);
+      --glow-b: rgba(184, 174, 232, .32);
+      --glow-c: rgba(180, 210, 239, .35);
+      --qr-shadow: rgba(36, 64, 70, .12);
+      --button: rgba(0, 121, 109, .08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #091419;
+        --ink: #edf8f8;
+        --muted: #a2bac1;
+        --accent: #83e3d2;
+        --glass: rgba(24, 43, 51, .7);
+        --glass-solid: #192d35;
+        --edge: rgba(211, 246, 248, .18);
+        --line: rgba(196, 231, 235, .13);
+        --highlight: rgba(230, 255, 255, .06);
+        --shadow: rgba(0, 0, 0, .32);
+        --glow-a: rgba(27, 133, 119, .34);
+        --glow-b: rgba(89, 76, 145, .32);
+        --glow-c: rgba(46, 92, 131, .26);
+        --qr-shadow: rgba(0, 0, 0, .18);
+        --button: rgba(131, 227, 210, .1);
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--page); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100svh;
+      padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 5% 3%, var(--glow-a), transparent 56%),
+        radial-gradient(ellipse at 100% 48%, var(--glow-b), transparent 54%),
+        radial-gradient(ellipse at 5% 100%, var(--glow-c), transparent 50%),
+        var(--page);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      -webkit-text-size-adjust: 100%;
+    }
+    .stage { width: 100%; max-width: 398px; }
+    .glass-card {
+      position: relative;
+      padding: 12px 12px 30px;
+      border: 1px solid var(--edge);
+      border-radius: 29px;
+      background: var(--glass-solid);
+      box-shadow: 0 24px 68px -18px var(--shadow), inset 0 1px 0 var(--highlight);
+    }
+    @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+      .glass-card {
+        background: var(--glass);
+        -webkit-backdrop-filter: blur(24px) saturate(135%);
+        backdrop-filter: blur(24px) saturate(135%);
+      }
+    }
+    svg { display: block; flex-shrink: 0; }
+    .amount-block { margin: 20px 8px 30px; text-align: center; }
+    .amount-block[hidden] + .details { margin-top: 24px; }
+    h1 {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+    .money {
+      margin: 0;
+      font-size: clamp(31px, 10vw, 42px);
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -1.5px;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+    .currency {
+      display: inline-block;
+      margin-left: 4px;
+      color: var(--accent);
+      font-size: .4762em;
+      font-weight: 400;
+      vertical-align: baseline;
+      letter-spacing: 0;
+    }
+    .qr-wrap { width: 100%; margin: 0; }
+    .qr-paper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1px solid rgba(0, 0, 0, .04);
+      border-radius: 18px;
+      background: #fff;
+      color: #172e36;
+      color-scheme: only light;
+      box-shadow: 0 8px 28px -9px var(--qr-shadow);
+    }
+    .qr-image {
+      position: absolute;
+      inset: 12px;
+      display: block;
+      width: calc(100% - 24px);
+      height: calc(100% - 24px);
+      object-fit: contain;
+      
+    }
+    .qr-empty {
+      display: flex;
+      position: absolute;
+      inset: 12px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      padding: 20px;
+      border: 1px dashed #c9d8dc;
+      border-radius: 12px;
+      color: #627a82;
+      text-align: center;
+      font-size: 13px;
+    }
+    .qr-empty span { max-width: 230px; }
+    .details { margin: 0 8px; text-align: center; }
+    .detail-row {
+      margin: 0;
+      padding: 0;
+    }
+    .account-row { margin-top: 22px; }
+    .bank-row { margin-top: 10px; }
+    dt { margin: 0 0 7px; color: var(--muted); font-size: 12px; font-weight: 400; }
+    dd {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .account {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: .7px;
+      font-variant-numeric: tabular-nums;
+      -webkit-user-select: all;
+      user-select: all;
+    }
+    .recipient { font-size: 21px; font-weight: 500; letter-spacing: -.35px; }
+    .bank { color: var(--muted); font-size: 14px; font-weight: 400; }
+    .note { margin-top: 22px; }
+    .note dd { font-size: 14px; font-weight: 400; }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+    [hidden] { display: none !important; }
+    .message {
+      margin: 16px 8px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .retry {
+      display: block;
+      min-height: 44px;
+      margin: 12px auto 0;
+      padding: 10px 18px;
+      border: 1px solid var(--edge);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--button);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .retry:disabled { opacity: .6; }
+    .retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    @media (max-width: 350px) {
+      body { padding-left: 12px; padding-right: 12px; }
+      .glass-card { padding: 10px 10px 26px; border-radius: 27px; }
+      .recipient { font-size: 18px; }
+      .account { font-size: 20px; }
+    }
+    @media (prefers-contrast: more) {
+      :root { --muted: #344e57; --line: rgba(42, 81, 91, .35); }
+      .glass-card { background: var(--glass-solid); }
+    }
+    @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
+      :root { --muted: #d0e2e8; --line: rgba(196, 231, 235, .4); }
+    }
+    @media print {
+      :root { color-scheme: light; }
+      body { min-height: 0; padding: 0; color: #172e36; background: #fff; }
+      .glass-card {
+        background: #fff;
+        border: 1px solid #d2dde0;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        break-inside: avoid;
+      }
+      dt, h1 { color: #526970; }
+      .currency { color: #00796d; }
+      .detail-row { border-color: #d2dde0; }
+    }
+    </style>
+</head>
+<body>
+  <main class="stage">
+    <article class="glass-card" aria-label="Thông tin chuyển khoản">
+      <div class="qr-wrap">
+        <div class="qr-paper" id="qr-paper" aria-busy="false">
+          <img class="qr-image" id="qr-image" hidden alt="Mã QR chuyển khoản" referrerpolicy="no-referrer" decoding="sync">
+          <div class="qr-empty" id="qr-placeholder" role="status" aria-live="polite">
+            <svg aria-hidden="true" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 12h8m-4-4v8"/>
+            </svg>
+            <span id="qr-label">Chờ dữ liệu chuyển khoản</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="amount-block" id="amount-block" aria-labelledby="payment-title" hidden>
+        <h1 id="payment-title">Số tiền</h1>
+        <p class="money"><span id="money-number"></span><span class="currency" id="currency" hidden aria-label="đồng">₫</span></p>
+      </section>
+
+      <dl class="details">
+        <div class="detail-row">
+          <dt>Người nhận</dt>
+          <dd class="recipient" id="name-value">—</dd>
+        </div>
+        <div class="detail-row account-row">
+          <dt>Số tài khoản</dt>
+          <dd class="account" id="number-value">—</dd>
+        </div>
+        <div class="detail-row bank-row">
+          <dt class="visually-hidden">Ngân hàng</dt>
+          <dd class="bank" id="bank-value">—</dd>
+        </div>
+        <div class="detail-row note" id="note-row" hidden>
+          <dt>Nội dung chuyển khoản</dt>
+          <dd id="note-value"></dd>
+        </div>
+      </dl>
+      <p class="message" id="message" role="status" hidden></p>
+      <button class="retry" id="qr-retry" type="button" aria-controls="qr-paper" hidden>Tải lại QR</button>
+      <noscript><p class="message">Trình xem đang tắt JavaScript. Mở bằng trình xem HTML có JavaScript để đọc Từ điển.</p></noscript>
+    </article>
+  </main>
+
+  <script type="application/json" id="bank-data">Bank_Info</script>
+  <script>(() => {
+  'use strict';
+
+  const BANK_NAMES = {
+  "970415": "VietinBank",
+  "970436": "Vietcombank",
+  "970418": "BIDV",
+  "970405": "Agribank",
+  "970448": "OCB",
+  "970422": "MBBank",
+  "970407": "Techcombank",
+  "970416": "ACB",
+  "970432": "VPBank",
+  "970423": "TPBank",
+  "970403": "Sacombank",
+  "970437": "HDBank",
+  "970454": "VietCapitalBank",
+  "970429": "SCB",
+  "970441": "VIB",
+  "970443": "SHB",
+  "970431": "Eximbank",
+  "970426": "MSB",
+  "546034": "CAKE",
+  "546035": "Ubank",
+  "963388": "Timo",
+  "971005": "ViettelMoney",
+  "971011": "VNPTMoney",
+  "970400": "SaigonBank",
+  "970409": "BacABank",
+  "971133": "PVcomBank Pay",
+  "971025": "MoMo",
+  "970412": "PVcomBank",
+  "970414": "MBV",
+  "970419": "NCB",
+  "970424": "ShinhanBank",
+  "970425": "ABBANK",
+  "970427": "VietABank",
+  "970428": "NamABank",
+  "970430": "PGBank",
+  "970433": "VietBank",
+  "970438": "BaoVietBank",
+  "970440": "SeABank",
+  "970446": "COOPBANK",
+  "970449": "LPBank",
+  "970452": "KienLongBank",
+  "668888": "KBank",
+  "970466": "KEBHanaHCM",
+  "970467": "KEBHANAHN",
+  "977777": "MAFC",
+  "999888": "VBSP",
+  "963668": "BNP HN",
+  "555666": "BIDC",
+  "963666": "BNP HCM",
+  "971101": "ZaloPay",
+  "963688": "BOCHK",
+  "970465": "BSP",
+  "168999": "CUBHCM",
+  "963686": "ESUN",
+  "963669": "ICBC",
+  "971032": "MVAS",
+  "963326": "TNEX",
+  "458761": "HSBC",
+  "970442": "HongLeong",
+  "970455": "IBKHN",
+  "970456": "IBKHCM",
+  "970434": "IndovinaBank",
+  "970406": "Vikki",
+  "801011": "Nonghyup",
+  "796500": "DBSBank",
+  "970439": "PublicBank",
+  "970410": "StandardChartered",
+  "533948": "Citibank",
+  "422589": "CIMB",
+  "970458": "UnitedOverseas",
+  "970444": "CBBank",
+  "970408": "GPBank",
+  "970421": "VRB",
+  "970457": "Woori",
+  "970462": "KookminHN",
+  "970463": "KookminHCM"
+};
+  const byId = id => document.getElementById(id);
+  const image = byId('qr-image');
+  const placeholder = byId('qr-placeholder');
+  const qrLabel = byId('qr-label');
+  const qrPaper = byId('qr-paper');
+  const message = byId('message');
+  const retry = byId('qr-retry');
+  let activeSource = '';
+  let cleanupRequest = null;
+  let requestVersion = 0;
+
+  function clearRequest() {
+    if (cleanupRequest) {
+      cleanupRequest();
+      cleanupRequest = null;
+    }
+  }
+
+  function fail(reason, retryable = false) {
+    requestVersion += 1;
+    clearRequest();
+    image.hidden = true;
+    image.removeAttribute('src');
+    placeholder.hidden = false;
+    qrLabel.textContent = 'Chưa tạo được mã QR';
+    qrPaper.setAttribute('aria-busy', 'false');
+    message.textContent = reason;
+    message.hidden = false;
+    retry.hidden = !retryable;
+    retry.disabled = false;
+  }
+
+  function loadQr() {
+    if (!activeSource) return;
+    clearRequest();
+    const version = ++requestVersion;
+    image.removeAttribute('src');
+    image.hidden = true;
+    placeholder.hidden = false;
+    qrLabel.textContent = 'Đang tải mã QR…';
+    qrPaper.setAttribute('aria-busy', 'true');
+    message.hidden = true;
+    retry.hidden = true;
+    retry.disabled = true;
+
+    const onLoad = () => {
+      if (version !== requestVersion) return;
+      requestVersion += 1;
+      clearRequest();
+      image.hidden = false;
+      placeholder.hidden = true;
+      qrPaper.setAttribute('aria-busy', 'false');
+      retry.disabled = false;
+    };
+    const onError = () => {
+      if (version !== requestVersion) return;
+      fail('Không tải được ảnh QR. Kiểm tra kết nối rồi thử lại.', true);
+    };
+    const timer = setTimeout(() => {
+      if (version !== requestVersion) return;
+      fail('Tải QR hơi lâu. Kiểm tra kết nối rồi bấm Tải lại QR.', true);
+    }, 15000);
+
+    cleanupRequest = () => {
+      clearTimeout(timer);
+      image.removeEventListener('load', onLoad);
+      image.removeEventListener('error', onError);
+    };
+    image.addEventListener('load', onLoad);
+    image.addEventListener('error', onError);
+    image.src = activeSource;
+  }
+
+  function optionalText(value, key) {
+    if (value === undefined || value === null) return '';
+    if (typeof value !== 'string') throw new Error('Khóa ' + key + ' cần kiểu Văn bản.');
+    return value.trim();
+  }
+
+  function normalize(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Cần một Từ điển có các khóa money, number, name và bank.');
+    }
+    const name = optionalText(data.name, 'name');
+    if (!name) throw new Error('Chưa có tên người nhận trong khóa name.');
+    if (typeof data.number !== 'string') {
+      throw new Error('Đặt khóa number thành kiểu Văn bản để giữ số 0 đầu tài khoản.');
+    }
+    const number = data.number.trim();
+    if (!/^[A-Za-z0-9]{1,19}$/.test(number)) {
+      throw new Error('Khóa number cần số tài khoản hoặc biệt danh gồm chữ/số, tối đa 19 ký tự.');
+    }
+    if (typeof data.bank !== 'string' && typeof data.bank !== 'number') {
+      throw new Error('Khóa bank cần mã BIN ngân hàng gồm 6 chữ số.');
+    }
+    const bank = String(data.bank).trim();
+    if (!/^\d{6}$/.test(bank)) throw new Error('Khóa bank cần mã BIN ngân hàng gồm 6 chữ số.');
+
+    let money = null;
+    const value = typeof data.money === 'string' ? data.money.trim() : data.money;
+    if (value !== undefined && value !== null && value !== '') {
+      if ((typeof value !== 'number' && typeof value !== 'string') ||
+          (typeof value === 'number' && !Number.isSafeInteger(value))) {
+        throw new Error('Khóa money cần số nguyên, ví dụ 125000.');
+      }
+      const digits = String(value).trim();
+      if (!/^\d{1,13}$/.test(digits) || Number(digits) <= 0) {
+        throw new Error('Khóa money cần số nguyên dương tối đa 13 chữ số, không có dấu chấm hoặc dấu phẩy.');
+      }
+      money = Number(digits);
+    }
+    const note = optionalText(data.note, 'note');
+    if (note.length > 50) throw new Error('Khóa note cần tối đa 50 ký tự.');
+    const bankName = optionalText(data.bankName, 'bankName');
+    const qr = optionalText(data.qr, 'qr');
+    return { name, number, bank, money, note, qr, bankName };
+  }
+
+  function qrSource(payment) {
+    if (payment.qr) {
+      const source = payment.qr.replace(/\s+/g, '');
+      if (/^data:image\/(?:png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/i.test(source)) {
+        return source;
+      }
+      if (/^[A-Za-z0-9+/]+={0,2}$/.test(source)) {
+        if (source.startsWith('iVBORw0KGgo')) return 'data:image/png;base64,' + source;
+        if (source.startsWith('/9j/')) return 'data:image/jpeg;base64,' + source;
+      }
+      throw new Error('Khóa qr cần Base64 của ảnh PNG/JPEG hoặc Data URI ảnh hợp lệ.');
+    }
+    const url = new URL('https://img.vietqr.io/image/' + payment.bank + '-' + payment.number + '-qr_only.svg');
+    if (payment.money !== null) url.searchParams.set('amount', String(payment.money));
+    if (payment.note) url.searchParams.set('addInfo', payment.note);
+    return url.href;
+  }
+
+  function render(payment, source) {
+    byId('amount-block').hidden = payment.money === null;
+    byId('money-number').textContent = payment.money === null
+      ? ''
+      : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(payment.money);
+    byId('currency').hidden = payment.money === null;
+    byId('name-value').textContent = payment.name;
+    byId('number-value').textContent = payment.number;
+    byId('bank-value').textContent = payment.bankName || BANK_NAMES[payment.bank] || ('BIN ' + payment.bank);
+    byId('note-value').textContent = payment.note;
+    byId('note-row').hidden = !payment.note;
+    activeSource = source;
+    loadQr();
+  }
+
+  retry.addEventListener('click', () => {
+    if (retry.hidden || retry.disabled) return;
+    loadQr();
+  });
+
+  let data;
+  try {
+    data = JSON.parse(byId('bank-data').textContent.trim());
+  } catch (_) {
+    fail('Chưa nhận được Từ điển dạng JSON. Chèn giá trị Từ điển vào khối dữ liệu rồi mở lại.');
+    return;
+  }
+  try {
+    const payment = normalize(data);
+    const source = qrSource(payment);
+    render(payment, source);
+  } catch (error) {
+    fail(error.message || 'Không đọc được thông tin chuyển khoản.');
+  }
+})();
+</script>
+</body>
+</html>
